@@ -1,7 +1,8 @@
 import { motion, useAnimation } from 'framer-motion'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { TrendingDown, FileCheck, Brain, BarChart3, Shield, Zap, Upload, Loader2 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import api from '../services/api'
 
 const containerVariants = {
   hidden: {},
@@ -27,31 +28,7 @@ const defaultCo2Data = [
   { name: 'Supply', value: 15, color: '#79c996' },
 ]
 
-const mockAnalysisData = {
-  total_co2_tons: 2847,
-  co2_breakdown: [
-    { name: 'Energy', value: 42, color: '#0F5132', tons: 1195.74 },
-    { name: 'Transport', value: 28, color: '#1e8742', tons: 797.16 },
-    { name: 'Waste', value: 15, color: '#3fb06a', tons: 426.75 },
-    { name: 'Supply', value: 15, color: '#79c996', tons: 426.75 },
-  ],
-  scope_breakdown: [
-    { scope_name: 'Scope 1 (Direct)', total_tons: 854.25, percentage: 30 },
-    { scope_name: 'Scope 2 (Indirect)', total_tons: 1139, percentage: 40 },
-    { scope_name: 'Scope 3 (Value Chain)', total_tons: 854.25, percentage: 30 },
-  ],
-  green_rating: 'A+',
-  rating_score: 87,
-  carbon_intensity: 51.78,
-  rating_description: 'Excellent - Industry leader in sustainability',
-  ai_insights: [
-    'Energy accounts for 42% of emissions. Consider renewable energy sourcing.',
-    'Supply chain (Scope 3) is your largest impact area. Engage suppliers for joint reduction initiatives.',
-    'Potential reduction: 299 tons CO2e by switching 25% to renewables.',
-  ],
-}
-
-function CustomTooltip({ active, payload, t }) {
+function CustomTooltip({ active, payload }) {
   if (active && payload && payload.length) {
     return (
       <div className="glass-strong rounded-lg px-3 py-2 text-xs">
@@ -82,7 +59,7 @@ function CO2Card({ t, data, loading }) {
               <Pie data={displayData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={3} dataKey="value" stroke="none">
                 {displayData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
               </Pie>
-              <Tooltip content={<CustomTooltip t={t} />} />
+              <Tooltip content={<CustomTooltip />} />
             </PieChart>
           </ResponsiveContainer>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -215,7 +192,9 @@ function StatsCard({ t }) {
 }
 
 function AICard({ t, data, loading }) {
-  const insights = loading ? ['Analyzing your data...', 'Processing emissions...', 'Generating insights...'] : data?.ai_insights || [t.dashboard.aiInsight1, t.dashboard.aiInsight2, t.dashboard.aiInsight3]
+  const insights = loading
+    ? ['Analyzing your data...', 'Processing emissions...', 'Generating insights...']
+    : data?.ai_insights || [t.dashboard.aiInsight1, t.dashboard.aiInsight2, t.dashboard.aiInsight3]
 
   return (
     <motion.div variants={cardVariants} className="glass rounded-2xl p-6 card-hover col-span-1 md:col-span-2">
@@ -246,16 +225,41 @@ function AICard({ t, data, loading }) {
 export default function Dashboard({ t, onAnalyze }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [file, setFile] = useState(null)
   const controls = useAnimation()
 
-  const handleAnalyze = async () => {
+  const handleAnalyzeMock = async () => {
     setLoading(true)
-    controls.start({ opacity: 0, y: 20 })
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setData(mockAnalysisData)
-    setLoading(false)
-    controls.start({ opacity: 1, y: 0 })
-    if (onAnalyze) onAnalyze(mockAnalysisData)
+    try {
+      const mockRes = await api.get('/api/mock-data')
+      const analysisRes = await api.post('/api/analyze', mockRes.data)
+      setData(analysisRes.data)
+      if (onAnalyze) onAnalyze(analysisRes.data)
+    } catch (e) {
+      alert('Analysis failed')
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleFileUpload = async () => {
+    if (!file) return
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('company_id', 'COMP_001')
+    formData.append('report_period', '2024-Q1')
+    setLoading(true)
+    try {
+      const res = await api.post('/api/upload-1c', formData)
+      setData(res.data)
+      if (onAnalyze) onAnalyze(res.data)
+    } catch (e) {
+      alert('Upload failed')
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -276,11 +280,31 @@ export default function Dashboard({ t, onAnalyze }) {
           <ReportCard t={t} />
           <AICard t={t} data={data} loading={loading} />
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-12 text-center">
-          <button onClick={handleAnalyze} disabled={loading} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-forest-800 text-white hover:bg-forest-700 border border-forest-600/30 shadow-lg shadow-forest-900/20 transition-all">
+        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-12 text-center flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <button
+            onClick={handleAnalyzeMock}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-forest-800 text-white hover:bg-forest-700 border border-forest-600/30 shadow-lg shadow-forest-900/20 transition-all"
+          >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            {loading ? 'Analyzing...' : 'Analyze 1C Data'}
+            {loading ? 'Analyzing...' : 'Analyze Mock Data'}
           </button>
+          <div className="flex items-center gap-3">
+            <input
+              type="file"
+              accept=".xlsx"
+              onChange={(e) => setFile(e.target.files[0])}
+              className="text-sm text-dark-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-forest-800/20 file:text-forest-300 hover:file:bg-forest-800/30"
+            />
+            <button
+              onClick={handleFileUpload}
+              disabled={!file || loading}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-forest-800 text-white hover:bg-forest-700 border border-forest-600/30 shadow-lg shadow-forest-900/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Upload className="w-4 h-4" />
+              Upload Excel & Analyze
+            </button>
+          </div>
         </motion.div>
       </div>
     </section>

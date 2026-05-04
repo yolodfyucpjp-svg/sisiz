@@ -22,7 +22,7 @@ export default function App() {
   const handleCheckout = (plan) => {
     setSelectedPlan(plan)
     setCheckoutOpen(true)
-  }
+}
 
   const handleAuthSuccess = (userData) => {
     setUser(userData)

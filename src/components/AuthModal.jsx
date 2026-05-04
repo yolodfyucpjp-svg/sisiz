@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Mail, Lock, Eye, EyeOff, Leaf, Loader2 } from 'lucide-react'
+import { authApi } from '../services/api'
 
 const backdrop = {
   hidden: { opacity: 0 },
@@ -30,22 +31,44 @@ export default function AuthModal({ isOpen, onClose, t, onAuthSuccess }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   if (!isOpen) return null
 
   const handleLogin = async () => {
+    setError('')
     if (!email || !password) return
     setLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setLoading(false)
-    onAuthSuccess({ email, name: email.split('@')[0] })
+    try {
+      const res = await authApi.login(email, password)
+      localStorage.setItem('auth_token', res.data.token)
+      onAuthSuccess(res.data.user)
+      onClose()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Login failed')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleGoogleLogin = async () => {
+    // Use Google Identity Services; here we simulate with a prompt
+    // In production, use google.accounts.id.prompt() and get a real credential.
+    // For now, we'll just use a test token.
+    setError('')
     setLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setLoading(false)
-    onAuthSuccess({ email: 'user@gmail.com', name: 'Google User' })
+    // Replace with actual Google login flow
+    const googleToken = 'demo-google-token'  // Placeholder
+    try {
+      const res = await authApi.googleLogin(googleToken)
+      localStorage.setItem('auth_token', res.data.token)
+      onAuthSuccess(res.data.user)
+      onClose()
+    } catch (err) {
+      setError('Google login failed')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -75,20 +98,20 @@ export default function AuthModal({ isOpen, onClose, t, onAuthSuccess }) {
             </button>
 
             <div className="p-8">
+              {/* Logo */}
               <div className="flex items-center justify-center gap-2 mb-6">
                 <div className="w-8 h-8 rounded-lg bg-forest-800 flex items-center justify-center">
                   <Leaf className="w-5 h-5 text-forest-300" />
                 </div>
-                <span className="text-lg font-bold text-white">
-                  Eco-Trace <span className="text-forest-400">AI</span>
-                </span>
+                <span className="text-lg font-bold text-white">Eco-Trace <span className="text-forest-400">AI</span></span>
               </div>
 
+              {/* Tab Selector */}
               <div className="flex rounded-xl bg-white/5 p-1 mb-8">
                 {['login', 'signUp'].map((key) => (
                   <button
                     key={key}
-                    onClick={() => setTab(key)}
+                    onClick={() => { setTab(key); setError('') }}
                     className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 ${
                       tab === key ? 'bg-forest-800 text-white shadow-lg shadow-forest-900/30' : 'text-dark-400 hover:text-dark-200'
                     }`}
@@ -98,6 +121,14 @@ export default function AuthModal({ isOpen, onClose, t, onAuthSuccess }) {
                 ))}
               </div>
 
+              {/* Error message */}
+              {error && (
+                <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+                  {error}
+                </div>
+              )}
+
+              {/* Google button */}
               <motion.button
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
@@ -120,6 +151,7 @@ export default function AuthModal({ isOpen, onClose, t, onAuthSuccess }) {
                 <div className="flex-1 h-px bg-white/5" />
               </div>
 
+              {/* Email & Password */}
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-medium text-dark-300 mb-1.5">{t.auth.email}</label>

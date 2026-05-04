@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, CreditCard, Lock, Shield, Loader2 } from 'lucide-react'
+import api from '../services/api'
 
 const backdrop = {
   hidden: { opacity: 0 },
@@ -27,12 +28,15 @@ const modal = {
 export default function CheckoutModal({ isOpen, onClose, t, plan }) {
   const [processing, setProcessing] = useState(false)
 
-  const handlePay = () => {
+  const handlePay = async () => {
     setProcessing(true)
-    setTimeout(() => {
+    try {
+      const res = await api.post('/api/create-checkout-session', { plan: plan.key || 'pro' })
+      window.location.href = res.data.url
+    } catch (err) {
+      alert("Payment setup failed. Please try again.")
       setProcessing(false)
-      onClose()
-    }, 2500)
+    }
   }
 
   if (!isOpen) return null
@@ -58,19 +62,12 @@ export default function CheckoutModal({ isOpen, onClose, t, plan }) {
             onClick={(e) => e.stopPropagation()}
             className="relative w-full max-w-md glass-strong rounded-2xl overflow-hidden"
           >
-            {/* Gradient accent */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-forest-800 via-forest-500 to-forest-800" />
-
-            {/* Close button */}
-            <button
-              onClick={onClose}
-              className="absolute top-4 right-4 p-1.5 rounded-lg text-dark-400 hover:text-white hover:bg-white/10 transition-all z-10"
-            >
+            <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg text-dark-400 hover:text-white hover:bg-white/10 transition-all z-10">
               <X className="w-4 h-4" />
             </button>
 
             <div className="p-8">
-              {/* Header */}
               <div className="text-center mb-8">
                 <div className="w-12 h-12 rounded-2xl bg-forest-800/30 flex items-center justify-center mx-auto mb-4">
                   <CreditCard className="w-6 h-6 text-forest-400" />
@@ -79,7 +76,6 @@ export default function CheckoutModal({ isOpen, onClose, t, plan }) {
                 <p className="text-xs text-dark-400">{t.checkout.subtitle}</p>
               </div>
 
-              {/* Plan summary */}
               <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.03] border border-white/5 mb-6">
                 <div>
                   <p className="text-xs text-dark-400">{t.checkout.plan}</p>
@@ -91,75 +87,36 @@ export default function CheckoutModal({ isOpen, onClose, t, plan }) {
                 </div>
               </div>
 
-              {/* Payment Form */}
               <div className="space-y-4">
-                {/* Name on card */}
                 <div>
-                  <label className="block text-xs font-medium text-dark-300 mb-1.5">
-                    {t.checkout.nameOnCard}
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={t.checkout.namePlaceholder}
-                    className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-forest-800/50 focus:ring-1 focus:ring-forest-800/30 transition-all"
-                  />
+                  <label className="block text-xs font-medium text-dark-300 mb-1.5">{t.checkout.nameOnCard}</label>
+                  <input type="text" placeholder={t.checkout.namePlaceholder} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-forest-800/50 focus:ring-1 focus:ring-forest-800/30 transition-all" />
                 </div>
-
-                {/* Card Number */}
                 <div>
-                  <label className="block text-xs font-medium text-dark-300 mb-1.5">
-                    {t.checkout.cardNumber}
-                  </label>
+                  <label className="block text-xs font-medium text-dark-300 mb-1.5">{t.checkout.cardNumber}</label>
                   <div className="relative">
                     <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500" />
-                    <input
-                      type="text"
-                      placeholder={t.checkout.cardPlaceholder}
-                      maxLength={19}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-forest-800/50 focus:ring-1 focus:ring-forest-800/30 transition-all font-mono tracking-wider"
-                    />
-                    {/* Card brand icons */}
+                    <input type="text" placeholder={t.checkout.cardPlaceholder} maxLength={19} className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-forest-800/50 focus:ring-1 focus:ring-forest-800/30 transition-all font-mono tracking-wider" />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                      <div className="w-7 h-5 rounded bg-white/10 flex items-center justify-center">
-                        <span className="text-[8px] font-bold text-dark-300">VISA</span>
-                      </div>
-                      <div className="w-7 h-5 rounded bg-white/10 flex items-center justify-center">
-                        <span className="text-[8px] font-bold text-dark-300">MC</span>
-                      </div>
+                      <div className="w-7 h-5 rounded bg-white/10 flex items-center justify-center"><span className="text-[8px] font-bold text-dark-300">VISA</span></div>
+                      <div className="w-7 h-5 rounded bg-white/10 flex items-center justify-center"><span className="text-[8px] font-bold text-dark-300">MC</span></div>
                     </div>
                   </div>
                 </div>
-
-                {/* Expiry & CVC Row */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-dark-300 mb-1.5">
-                      {t.checkout.expiry}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={t.checkout.expiryPlaceholder}
-                      maxLength={7}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-forest-800/50 focus:ring-1 focus:ring-forest-800/30 transition-all font-mono"
-                    />
+                    <label className="block text-xs font-medium text-dark-300 mb-1.5">{t.checkout.expiry}</label>
+                    <input type="text" placeholder={t.checkout.expiryPlaceholder} maxLength={7} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-forest-800/50 focus:ring-1 focus:ring-forest-800/30 transition-all font-mono" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-dark-300 mb-1.5">
-                      {t.checkout.cvc}
-                    </label>
+                    <label className="block text-xs font-medium text-dark-300 mb-1.5">{t.checkout.cvc}</label>
                     <div className="relative">
-                      <input
-                        type="text"
-                        placeholder={t.checkout.cvcPlaceholder}
-                        maxLength={4}
-                        className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-forest-800/50 focus:ring-1 focus:ring-forest-800/30 transition-all font-mono"
-                      />
+                      <input type="text" placeholder={t.checkout.cvcPlaceholder} maxLength={4} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-forest-800/50 focus:ring-1 focus:ring-forest-800/30 transition-all font-mono" />
                       <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-dark-500" />
                     </div>
                   </div>
                 </div>
 
-                {/* Pay Button */}
                 <motion.button
                   whileHover={!processing ? { scale: 1.01 } : {}}
                   whileTap={!processing ? { scale: 0.99 } : {}}
@@ -174,7 +131,7 @@ export default function CheckoutModal({ isOpen, onClose, t, plan }) {
                   {processing ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      {t.checkout.processing}
+                      Redirecting to Stripe...
                     </>
                   ) : (
                     <>
@@ -184,8 +141,6 @@ export default function CheckoutModal({ isOpen, onClose, t, plan }) {
                   )}
                 </motion.button>
               </div>
-
-              {/* Security badge */}
               <div className="flex items-center justify-center gap-2 mt-6 pt-4 border-t border-white/5">
                 <Shield className="w-3.5 h-3.5 text-dark-500" />
                 <span className="text-[11px] text-dark-500">{t.checkout.secured}</span>

@@ -151,7 +151,7 @@ export default function Pricing({ t, onCheckout }) {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => {
                       if (plan.key === 'pro') {
-                        onCheckout({ name: data.name, price: data.price + (data.period || '') })
+                        onCheckout({ name: data.name, price: data.price + (data.period || ''), key: plan.key })
                       }
                     }}
                     className={`w-full py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
